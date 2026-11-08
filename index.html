@@ -1,1 +1,187 @@
 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fantasy LaLiga</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#101827;color:white;font-family:Arial,sans-serif}
+header{padding:25px 18px;background:linear-gradient(135deg,#35145e,#111c35)}
+.logo{font-size:27px;font-weight:900}
+.logo span{color:#b8ff45}
+header p{color:#c5c8d3}
+.container{padding:18px;max-width:700px;margin:auto}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.stat,.panel{background:#1c293b;border-radius:15px;padding:17px;margin-bottom:14px}
+.stat small{color:#aab5c5}
+.stat h2{margin:8px 0 0;color:#b8ff45}
+h3{margin-top:8px}
+.progress{height:8px;background:#39475a;border-radius:10px;margin-top:12px;overflow:hidden}
+.bar{height:100%;background:#b8ff45;width:0%}
+.filters{display:flex;gap:7px;flex-wrap:wrap;margin:15px 0}
+button,select{border:0;border-radius:9px;padding:11px;background:#34445b;color:white;font-weight:bold}
+button.active{background:#b8ff45;color:#14202b}
+.player{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:13px 0;border-bottom:1px solid #34445b}
+.player:last-child{border:0}
+.player small{display:block;color:#aab5c5;margin-top:5px}
+.price{color:#b8ff45;font-weight:bold;white-space:nowrap}
+.add{background:#b8ff45;color:#111c28}
+.remove{background:#a83e4a}
+select{max-width:100%;margin:5px 0}
+.action{width:100%;background:#b8ff45;color:#111c28;padding:14px;margin-top:10px}
+#message{color:#b8ff45;min-height:22px}
+footer{text-align:center;color:#8995a8;padding:25px}
+</style>
+</head>
+<body>
+<header>
+ <div class="logo">FANTASY <span>LALIGA</span> ⚽</div>
+ <p>Build your dream team. Rule the league.</p>
+</header>
+
+<div class="container">
+ <div class="stats">
+  <div class="stat">
+   <small>REMAINING BUDGET</small>
+   <h2 id="budget">100.0M</h2>
+  </div>
+  <div class="stat">
+   <small>PLAYERS SELECTED</small>
+   <h2 id="count">0 / 15</h2>
+  </div>
+ </div>
+
+ <div class="panel">
+  <h3>Squad progress</h3>
+  <div id="formation">2 GK · 5 DEF · 5 MID · 3 FWD</div>
+  <div class="progress"><div class="bar" id="bar"></div></div>
+ </div>
+
+ <div class="panel">
+  <h3>⭐ Your Team</h3>
+  <div id="squad">Choose your first player!</div>
+  <p><small>GK: 0/2 · DEF: 0/5 · MID: 0/5 · FWD: 0/3</small></p>
+  <h3>Captain</h3>
+  <select id="captain"><option value="">Choose Captain</option></select>
+  <h3>Vice-Captain</h3>
+  <select id="vice"><option value="">Choose Vice-Captain</option></select>
+  <button class="action" onclick="saveTeam()">SAVE MY TEAM</button>
+  <p id="message"></p>
+ </div>
+
+ <div class="panel">
+  <h3>Choose your players</h3>
+  <div class="filters">
+   <button class="active" onclick="filter('ALL',this)">ALL</button>
+   <button onclick="filter('GK',this)">GK</button>
+   <button onclick="filter('DEF',this)">DEF</button>
+   <button onclick="filter('MID',this)">MID</button>
+   <button onclick="filter('FWD',this)">FWD</button>
+  </div>
+  <div id="players"></div>
+ </div>
+
+ <div class="panel">
+  <h3>🏆 Leagues</h3>
+  <p>Public and Private Leagues</p>
+  <button onclick="alert('League feature coming soon!')">CREATE LEAGUE</button>
+  <button onclick="alert('League feature coming soon!')">JOIN LEAGUE</button>
+ </div>
+</div>
+<footer>FANTASY LALIGA · 2026/27</footer>
+
+<script>
+const players=[
+{name:"Goalkeeper A",club:"Team A",pos:"GK",price:5},
+{name:"Goalkeeper B",club:"Team B",pos:"GK",price:4},
+{name:"Goalkeeper C",club:"Team C",pos:"GK",price:4.5},
+{name:"Defender A",club:"Team A",pos:"DEF",price:6},
+{name:"Defender B",club:"Team B",pos:"DEF",price:5.5},
+{name:"Defender C",club:"Team C",pos:"DEF",price:5},
+{name:"Defender D",club:"Team D",pos:"DEF",price:4.5},
+{name:"Defender E",club:"Team E",pos:"DEF",price:4},
+{name:"Defender F",club:"Team F",pos:"DEF",price:4},
+{name:"Midfielder A",club:"Team A",pos:"MID",price:12},
+{name:"Midfielder B",club:"Team B",pos:"MID",price:10},
+{name:"Midfielder C",club:"Team C",pos:"MID",price:9},
+{name:"Midfielder D",club:"Team D",pos:"MID",price:8},
+{name:"Midfielder E",club:"Team E",pos:"MID",price:7},
+{name:"Midfielder F",club:"Team F",pos:"MID",price:6},
+{name:"Forward A",club:"Team A",pos:"FWD",price:13},
+{name:"Forward B",club:"Team B",pos:"FWD",price:11},
+{name:"Forward C",club:"Team C",pos:"FWD",price:9},
+{name:"Forward D",club:"Team D",pos:"FWD",price:8},
+{name:"Forward E",club:"Team E",pos:"FWD",price:7}
+];
+const limits={GK:2,DEF:5,MID:5,FWD:3};
+let team=[];
+let currentFilter="ALL";
+function cost(){return team.reduce((s,p)=>s+p.price,0)}
+function render(){
+ const left=100-cost();
+ document.getElementById("budget").textContent=left.toFixed(1)+"M";
+ document.getElementById("count").textContent=team.length+" / 15";
+ document.getElementById("bar").style.width=(team.length/15*100)+"%";
+ document.getElementById("formation").textContent=
+ ["GK","DEF","MID","FWD"].map(x=>x+" "+team.filter(p=>p.pos===x).length+"/"+limits[x]).join(" · ");
+ document.getElementById("squad").innerHTML=team.length?team.map(p=>
+ `<div class="player"><div>${p.name}<small>${p.pos} · ${p.club}</small></div><span class="price">${p.price}M</span><button class="remove" onclick="removePlayer('${p.name}')">✕</button></div>`
+ ).join(""):"Choose your first player!";
+ document.getElementById("players").innerHTML=players.filter(p=>
+ (currentFilter==="ALL"||p.pos===currentFilter)
+ ).map(p=>{
+ let selected=team.some(x=>x.name===p.name);
+ return `<div class="player"><div><b>${p.name}</b><small>${p.club} · ${p.pos}</small></div><span class="price">${p.price}M</span><button class="${selected?'remove':'add'}" onclick="togglePlayer('${p.name}')">${selected?'REMOVE':'ADD +'}</button></div>`;
+ }).join("");
+ ["captain","vice"].forEach(id=>{
+ let el=document.getElementById(id),old=el.value;
+ el.innerHTML=`<option value="">Choose ${id==="captain"?"Captain":"Vice-Captain"}</option>`+
+ team.map(p=>`<option value="${p.name}">${p.name}</option>`).join("");
+ if(team.some(p=>p.name===old))el.value=old;
+ });
+}
+function filter(pos,btn){
+ currentFilter=pos;
+ document.querySelectorAll(".filters button").forEach(b=>b.classList.remove("active"));
+ btn.classList.add("active");
+ render();
+}
+function togglePlayer(name){
+ let p=players.find(x=>x.name===name);
+ if(team.some(x=>x.name===name)){removePlayer(name);return}
+ if(team.length>=15){alert("Your squad is full!");return}
+ if(team.filter(x=>x.pos===p.pos).length>=limits[p.pos]){
+ alert("You have reached the limit for this position!");return;
+ }
+ if(cost()+p.price>100){alert("Not enough budget!");return}
+ team.push(p);render();
+}
+function removePlayer(name){
+ team=team.filter(p=>p.name!==name);render();
+}
+function saveTeam(){
+ if(team.length!==15){alert("Choose all 15 players first!");return}
+ if(!document.getElementById("captain").value||
+ !document.getElementById("vice").value){alert("Choose Captain and Vice-Captain!");return}
+ if(document.getElementById("captain").value===document.getElementById("vice").value){
+ alert("Captain and Vice-Captain must be different!");return}
+ localStorage.setItem("fantasyLaligaTeam",JSON.stringify({
+ team,captain:document.getElementById("captain").value,
+ vice:document.getElementById("vice").value
+ }));
+ document.getElementById("message").textContent="✅ Your team has been saved!";
+}
+const saved=localStorage.getItem("fantasyLaligaTeam");
+if(saved){
+ try{
+ let data=JSON.parse(saved);
+ team=data.team||[];
+ }catch(e){team=[]}
+}
+render();
+</script>
+</body>
+</html>
+
